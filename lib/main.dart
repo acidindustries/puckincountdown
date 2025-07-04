@@ -226,7 +226,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
                       ),
                     ),
                     Text(
-                      'Last cup won: ${selectedTeamData.lastStanleyCup?.year ?? 'None'}',
+                      'Last cup won: ${selectedTeamData.lastStanleyCup?.year ?? 'never'}',
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                   ],
