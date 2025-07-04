@@ -15,14 +15,14 @@ class TeamData {
   });
 
   factory TeamData.fromJson(Map<String, dynamic> json) {
-    final base64str = json["logo_base64"].split(',').last;
+    // final base64str = json["logo_base64"].split(',').last;
     return TeamData(
       name: json["team"],
       founded: DateTime.parse(json["founded"]),
       lastStanleyCup: json["last_stanley_cup"] == null
           ? null
           : DateTime.parse(json["last_stanley_cup"]),
-      teamLogo: Image.memory(base64Decode(base64str)),
+      teamLogo: Image.memory(base64Decode(json["logo_base64"])),
     );
   }
 }

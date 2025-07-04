@@ -3,30 +3,36 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:puckin_countdown/app_icon.dart';
+import 'package:puckin_countdown/cup_troller.dart';
 import 'package:puckin_countdown/team_data.dart';
-import 'package:puckin_countdown/widgets/flip_day_clock.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:web/web.dart' as web hide Text;
+import 'package:web/web.dart' hide Text;
 
 void main() {
-  runApp(const PuckinCountdownApp());
+  runApp(PuckinCountdownApp());
 }
 
 class PuckinCountdownApp extends StatelessWidget {
-  const PuckinCountdownApp({super.key});
+  PuckinCountdownApp({super.key});
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: "Puckin' Countdown",
+      title: "Puckin' Countdown - Stanley Cup Drought Tracker",
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xff1a365d),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xff2d3748),
-          foregroundColor: Colors.white,
-        ),
+        useMaterial3: true,
+        colorSchemeSeed: Colors.blue,
+        brightness: Brightness.light,
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorSchemeSeed: Colors.white,
+        brightness: Brightness.dark,
+      ),
+      themeMode: ThemeMode.system,
       home: const CountdownScreen(),
     );
   }
@@ -43,6 +49,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
   Timer? _timer;
   late String _selectedTeam = 'TOR';
   String _countdownText = '';
+  late DateTime _lastDate = DateTime.now();
+  String _trollMessage = '';
 
   Map<String, TeamData> nhlTeamsData = {};
 
@@ -53,16 +61,41 @@ class _CountdownScreenState extends State<CountdownScreen> {
     _selectedTeam = uri.queryParameters['team'] == null
         ? 'MTL'
         : uri.queryParameters['team'] as String;
+    _loadDateAndMessage();
   }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadJsonData();
+    _loadJsonData().then((_) {
+      CupTroller.loadTrollMessages().then((_) {
+        _loadDateAndMessage();
+      });
     });
 
     _startTimer();
+  }
+
+  void _loadDateAndMessage() {
+    final teamData = nhlTeamsData[_selectedTeam];
+    DateTime date;
+    if (teamData == null) return;
+
+    if (teamData.lastStanleyCup == null) {
+      date = teamData.founded;
+    } else {
+      date = teamData.lastStanleyCup!;
+    }
+
+    setState(() {
+      _lastDate = date;
+      print(_lastDate);
+      _trollMessage = CupTroller.getTrollMessage(
+        _selectedTeam,
+        DateTime.now().difference(_lastDate),
+      );
+    });
+    _updateUri(_selectedTeam);
   }
 
   _loadJsonData() async {
@@ -85,22 +118,11 @@ class _CountdownScreenState extends State<CountdownScreen> {
         _updateCountdown();
       });
     });
-    _updateCountdown();
   }
 
   void _updateCountdown() {
-    final teamData = nhlTeamsData[_selectedTeam];
-    DateTime date;
-    if (teamData == null) return;
-
-    if (teamData.lastStanleyCup == null) {
-      date = teamData.founded;
-    } else {
-      date = teamData.lastStanleyCup!;
-    }
-
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final difference = now.difference(_lastDate);
 
     final days = difference.inDays;
     final hours = difference.inHours % 24;
@@ -108,7 +130,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
     final seconds = difference.inSeconds % 60;
 
     _countdownText =
-        '${days.toString().padLeft(3, '0')}:${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+        '${days.toString().padLeft(3, '0')} days ${hours.toString().padLeft(2, '0')} hours ${minutes.toString().padLeft(2, '0')} minutes and ${seconds.toString().padLeft(2, '0')} seconds';
   }
 
   @override
@@ -117,22 +139,34 @@ class _CountdownScreenState extends State<CountdownScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Puckin\' Countdown'),
+        title: Text(
+          'Stanley Cup Drought Tracker',
+          style: TextStyle(color: Theme.of(context).colorScheme.primary),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         centerTitle: true,
         actions: [
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedTeam,
-              dropdownColor: const Color(0xff2d3748),
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+              dropdownColor: Theme.of(context).colorScheme.secondaryContainer,
+              iconEnabledColor: Theme.of(
+                context,
+              ).colorScheme.secondaryContainer,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontSize: 18,
+              ),
+              // icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
               padding: EdgeInsets.all(12),
               items: nhlTeamsData.keys.map((String teamCode) {
                 return DropdownMenuItem<String>(
                   value: teamCode,
                   child: Text(
                     '${nhlTeamsData[teamCode]!.name} ($teamCode)',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                   ),
                 );
               }).toList(),
@@ -140,8 +174,9 @@ class _CountdownScreenState extends State<CountdownScreen> {
                 if (newValue == null) {
                   return;
                 }
-
                 _selectedTeam = newValue;
+                _loadDateAndMessage();
+                _updateUri(newValue);
                 _updateCountdown();
               },
             ),
@@ -156,86 +191,88 @@ class _CountdownScreenState extends State<CountdownScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Team Information
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 1,
-                    vertical: 1,
+                Text(
+                  selectedTeamData!.name,
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                Spacer(),
+                // const SizedBox(height: 20),
+                Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadiusGeometry.circular(16),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      // Team Name
-                      // Text(
-                      //   selectedTeamData!.name,
-                      //   style: const TextStyle(
-                      //     fontSize: 24,
-                      //     fontWeight: FontWeight.bold,
-                      //     color: Colors.white,
-                      //   ),
-                      //   textAlign: TextAlign.center,
-                      // ),
-                      // Team Logo
-                      Image(
-                        image: selectedTeamData!.teamLogo.image,
-                        width: 400,
-                        height: 400,
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Image(image: selectedTeamData!.teamLogo.image),
                   ),
                 ),
                 Spacer(),
-                Text(
-                  selectedTeamData.lastStanleyCup == null
-                      ? "The ${selectedTeamData.name} have never won the Stanley cup!"
-                      : "The ${selectedTeamData.name} have not won the Stanley cup since",
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white.withAlpha(120),
-                  ),
+                // const SizedBox(height: 30),
+                Column(
+                  children: [
+                    Text(
+                      "❄️ Stanley Cup Drought",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      _countdownText,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    Text(
+                      'Last cup won: ${selectedTeamData.lastStanleyCup?.year ?? 'None'}',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xff1a365d),
-                    borderRadius: const BorderRadius.all(Radius.circular(8.0)),
-                  ),
-                  padding: const EdgeInsets.all(16.0),
-                  child: FlipDayClock(
-                    initDuration:
-                        nhlTeamsData[_selectedTeam]!.lastStanleyCup ??
-                        nhlTeamsData[_selectedTeam]!.founded,
-                    digitSize: 54.0,
-                    width: 46.0,
-                    height: 62.0,
-                    separatorColor: Colors.black,
-                    hingeColor: Colors.black,
-                    digitColor: Colors.black,
-                    separatorBackgroundColor: Colors.white,
-                    backgroundColor: Colors.white,
-                    showBorder: true,
-                  ),
-                ),
-                const Spacer(),
+                // const SizedBox(height: 30),
+                Spacer(),
+                // Troll message
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.2),
+                    color: Colors.red.shade100,
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade500),
                   ),
                   child: Text(
-                    _getFunFact(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
+                    _trollMessage,
+                    style: TextStyle(
                       fontStyle: FontStyle.italic,
+                      color: Colors.red.shade900,
                     ),
                     textAlign: TextAlign.center,
                   ),
+                ),
+                Spacer(),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  onPressed: () async {
+                    try {
+                      var result = await SharePlus.instance.share(
+                        ShareParams(
+                          subject:
+                              "${nhlTeamsData[_selectedTeam]!.name} Stanley Cup Drought Calculator",
+                          // text: _countdownText,
+                          uri: Uri.parse(web.window.location.href),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint("Share error: $e");
+                    }
+                  },
+                  child: Text('Share the Roast'),
                 ),
               ],
             ),
@@ -245,24 +282,13 @@ class _CountdownScreenState extends State<CountdownScreen> {
     );
   }
 
-  String _getFunFact() {
-    final teamData = nhlTeamsData[_selectedTeam];
-    if (teamData!.lastStanleyCup == null) {
-      return 'Keep cheering. Every team\'s journey to their first Stanley Cup is special!';
-    }
-
-    final yearsSince =
-        DateTime.now().difference(teamData.lastStanleyCup!).inDays ~/ 365;
-    if (yearsSince < 2) {
-      return 'Recent champions! The Cup is still shiny! ✨';
-    } else if (yearsSince < 5) {
-      return 'Still basking in recent glory! 🌟';
-    } else if (yearsSince < 10) {
-      return 'Time to start another Cup run! 🚀';
-    } else if (yearsSince < 20) {
-      return 'The drought is getting real... 🏜️';
-    } else {
-      return 'Legendary patience! The next Cup will be extra sweet! 🙏';
-    }
+  void _updateUri(String teamAccronym) {
+    final currentUri = Uri.parse(web.window.location.href);
+    final queryParameters = Map<String, String>.from(
+      currentUri.queryParameters,
+    );
+    queryParameters['team'] = teamAccronym;
+    final newUri = currentUri.replace(queryParameters: queryParameters);
+    web.window.history.pushState(null, '', newUri.toString());
   }
 }

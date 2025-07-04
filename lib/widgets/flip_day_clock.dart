@@ -76,6 +76,8 @@ class FlipDayClock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('Building');
+    print(initDuration);
     final now = DateTime.now();
 
     final periodicStream = Stream<Duration>.periodic(
