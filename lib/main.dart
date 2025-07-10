@@ -54,67 +54,17 @@ class _CountdownScreenState extends State<CountdownScreen> {
   bool _showFront = true;
   late Future<Map<String, dynamic>> _initFuture;
   bool _isTeamInitialized = false;
+  static const String fourOhFourTeam = 'UNK';
 
   Map<String, TeamData> nhlTeamsData = {};
   Map<String, dynamic> cupWins = {};
 
   @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   final uri = Uri.parse(web.window.location.href);
-  //   // if (nhlTeamsData.isEmpty) {
-  //   //   _selectedTeam = 'UNK';
-  //   // } else {
-  //   final random = Random();
-  //   _selectedTeam = null;
-  //   if (nhlTeamsData.isNotEmpty) {
-  //     _selectedTeam = uri.queryParameters['team'] == null
-  //         ? nhlTeamsData[nhlTeamsData.keys.elementAt(
-  //                 random.nextInt(nhlTeamsData.length),
-  //               )]!
-  //               .name
-  //         : (uri.queryParameters['team'] as String).toUpperCase();
-  //   }
-  //   if (!nhlTeamsData.keys.contains(_selectedTeam)) {
-  //     _selectedTeam = 'UNK';
-  //   }
-  //   // }
-  //   // _loadDateAndMessage();
-  // }
-  @override
   void initState() {
     super.initState();
     _initFuture = _loadCupAndTrollData();
-    // _loadJsonData().then((_) {
-    //   CupTroller.loadTrollMessages().then((_) {
-    //     _loadDateAndMessage();
-    //   });
-    // });
-    // _startTimer();
   }
 
-  // void _loadDateAndMessage() {
-  //   if (_selectedTeam == null) {
-  //     return;
-  //   }
-  //   final teamData = nhlTeamsData[_selectedTeam];
-  //   DateTime date;
-  //   if (teamData == null) return;
-  //   if (teamData.lastStanleyCup == null) {
-  //     date = teamData.founded;
-  //   } else {
-  //     date = teamData.lastStanleyCup!;
-  //   }
-  //   setState(() {
-  //     _lastDate = date;
-  //     print(_lastDate);
-  //     _trollMessage = CupTroller.getTrollMessage(
-  //       _selectedTeam!,
-  //       DateTime.now().difference(_lastDate),
-  //     );
-  //   });
-  //   _updateUri(_selectedTeam!);
-  // }
   @override
   void dispose() {
     _timer?.cancel();
@@ -177,7 +127,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
         ? nhlTeamsData.keys.elementAt(random.nextInt(nhlTeamsData.length))
         : (uri.queryParameters['team'] as String).toUpperCase();
     if (!nhlTeamsData.keys.contains(_selectedTeam)) {
-      _selectedTeam = 'UNK';
+      _selectedTeam = fourOhFourTeam;
     }
   }
 
@@ -252,7 +202,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
             actions: [
               DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: _selectedTeam == 'UNK'
+                  value: _selectedTeam == fourOhFourTeam
                       ? nhlTeamsData.keys.first
                       : _selectedTeam,
                   dropdownColor: Theme.of(
@@ -267,25 +217,25 @@ class _CountdownScreenState extends State<CountdownScreen> {
                   ),
                   icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
                   padding: EdgeInsets.all(12),
-                  items: nhlTeamsData.keys.where((key) => key != 'UNK').map((
-                    String teamCode,
-                  ) {
-                    return DropdownMenuItem<String>(
-                      value: teamCode,
-                      child: Text(
-                        '${nhlTeamsData[teamCode]!.name} ($teamCode)',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                  items: nhlTeamsData.keys
+                      .where((key) => key != fourOhFourTeam)
+                      .map((String teamCode) {
+                        return DropdownMenuItem<String>(
+                          value: teamCode,
+                          child: Text(
+                            '${nhlTeamsData[teamCode]!.name} ($teamCode)',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        );
+                      })
+                      .toList(),
                   onChanged: (String? newValue) {
                     if (newValue == null) {
                       return;
                     }
                     _switchTeam(newValue);
-                    // _selectedTeam = newValue;
                   },
                 ),
               ),
@@ -307,26 +257,27 @@ class _CountdownScreenState extends State<CountdownScreen> {
                       ),
                     ),
                     Spacer(),
-                    // const SizedBox(height: 20),
                     GestureDetector(
                       onTap: () => setState(() => _showFront = !_showFront),
-                      child: AnimatedSwitcher(
-                        duration: Duration(milliseconds: 400),
-                        transitionBuilder: _flipTransition,
-                        switchInCurve: Curves.easeInOut,
-                        switchOutCurve: Curves.easeInOut,
-                        layoutBuilder: (widget, list) => Stack(
-                          children: [if (widget != null) widget, ...list],
-                        ),
-                        child: (_showFront || _selectedTeam == 'UNK'
-                            ? _buildFrontCard(selectedTeamData)
-                            : _buildBackCard(selectedTeamData)),
-                      ),
+                      child: _selectedTeam != fourOhFourTeam
+                          ? AnimatedSwitcher(
+                              duration: Duration(milliseconds: 400),
+                              transitionBuilder: _flipTransition,
+                              switchInCurve: Curves.easeInOut,
+                              switchOutCurve: Curves.easeInOut,
+                              layoutBuilder: (widget, list) => Stack(
+                                children: [if (widget != null) widget, ...list],
+                              ),
+                              child: (_showFront
+                                  ? _buildFrontCard(selectedTeamData)
+                                  : _buildBackCard(selectedTeamData)),
+                            )
+                          : _buildFrontCard(selectedTeamData),
                     ),
                     Spacer(),
                     Column(
                       children: [
-                        if (_selectedTeam != 'UNK')
+                        if (_selectedTeam != fourOhFourTeam)
                           Text(
                             "❄️ Stanley Cup Drought",
                             style: TextStyle(
@@ -334,7 +285,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                        if (_selectedTeam != 'UNK')
+                        if (_selectedTeam != fourOhFourTeam)
                           Text(
                             _countdownText,
                             style: TextStyle(
@@ -342,16 +293,16 @@ class _CountdownScreenState extends State<CountdownScreen> {
                               fontWeight: FontWeight.w400,
                             ),
                           ),
-                        if (_selectedTeam != 'UNK')
+                        if (_selectedTeam != fourOhFourTeam)
                           Text(
                             'Last cup won: ${selectedTeamData.lastStanleyCup?.year ?? 'never'}',
                             style: TextStyle(fontSize: 14, color: Colors.grey),
                           ),
                       ],
                     ),
-                    if (_selectedTeam != 'UNK') Spacer(),
+                    if (_selectedTeam != fourOhFourTeam) Spacer(),
                     // Troll message
-                    if (_selectedTeam != 'UNK')
+                    if (_selectedTeam != fourOhFourTeam)
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -368,8 +319,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                    if (_selectedTeam != 'UNK') Spacer(),
-                    if (_selectedTeam != 'UNK')
+                    if (_selectedTeam != fourOhFourTeam) Spacer(),
+                    if (_selectedTeam != fourOhFourTeam)
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(
