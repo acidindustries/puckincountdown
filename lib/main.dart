@@ -257,6 +257,32 @@ class _CountdownScreenState extends State<CountdownScreen> {
                       ),
                     ),
                     Spacer(),
+                    Column(
+                      children: [
+                        if (_selectedTeam != fourOhFourTeam)
+                          Text(
+                            "❄️ Stanley Cup Drought",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        if (_selectedTeam != fourOhFourTeam)
+                          Text(
+                            _countdownText,
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        if (_selectedTeam != fourOhFourTeam)
+                          Text(
+                            'Last cup won: ${selectedTeamData.lastStanleyCup?.year ?? 'never'}',
+                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          ),
+                      ],
+                    ),
+                    Spacer(),
                     GestureDetector(
                       onTap: () => setState(() => _showFront = !_showFront),
                       child: _selectedTeam != fourOhFourTeam
@@ -275,31 +301,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
                           : _buildFrontCard(selectedTeamData),
                     ),
                     Spacer(),
-                    Column(
-                      children: [
-                        if (_selectedTeam != fourOhFourTeam)
-                          Text(
-                            "❄️ Stanley Cup Drought",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        if (_selectedTeam != fourOhFourTeam)
-                          Text(
-                            _countdownText,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                        if (_selectedTeam != fourOhFourTeam)
-                          Text(
-                            'Last cup won: ${selectedTeamData.lastStanleyCup?.year ?? 'never'}',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                      ],
-                    ),
+                    
                     if (_selectedTeam != fourOhFourTeam) Spacer(),
                     // Troll message
                     if (_selectedTeam != fourOhFourTeam)
@@ -399,10 +401,14 @@ class _CountdownScreenState extends State<CountdownScreen> {
             selectedTeamData != null
                 ? Image(
                     image: selectedTeamData.teamLogo.image,
-                    height: 400,
-                    width: 400,
+                    height: 300,
+                    width: 300,
                   )
                 : CircularProgressIndicator(),
+              Text(
+                "Tap for Stanley Cup wins",
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
           ],
         ),
       ),
@@ -417,8 +423,8 @@ class _CountdownScreenState extends State<CountdownScreen> {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: SizedBox(
-          width: 400,
-          height: 400,
+          width: 300,
+          height: 300,
           child: Column(
             children: [
               Text(
@@ -448,7 +454,7 @@ class _CountdownScreenState extends State<CountdownScreen> {
                           }).toList()
                           as List<Chip>,
               ),
-              const Spacer(),
+              Spacer(),
               Text(
                 "Tap again to go back",
                 style: TextStyle(color: Colors.grey.shade600),
